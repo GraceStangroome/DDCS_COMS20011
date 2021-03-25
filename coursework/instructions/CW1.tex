@@ -51,13 +51,13 @@ Your solution should:
 \end{itemize}
 
 \paragraph{Note:} All Code written for the least squares regression sections must be written by yourself.
-You can use anything in the Python standard library (https://docs.python.org/3/library/) but the only external libraries your solution should use are:
+The only external libraries your solution should use are:
 \begin{itemize}
   \item Numpy
   \item Pandas
   \item Matplotlib
 \end{itemize}
-e.g. \texttt{scipy}, \texttt{sk\_learn} and \texttt{torch} are not permitted.
+Builtins e.g. from \texttt{os}, \texttt{sys}, or \texttt{argparse} are fine.  But Scipy/Torch are not!
 
 \section{Report}
 
@@ -154,9 +154,9 @@ Test files could consist of any number of line segments (\textit{i.e.} longer th
 \section{Input/Output}
 \label{sec:IO}
 
-We expect a program called \textbf{lsr.py} (\textbf{not a jupyter notebook}) which will be run as follows:
+The auto-marker will expect a program called \textbf{lsr.py} (\textbf{not a jupyter notebook}) which will be run as follows:
 \begin{verbatim}
-    $ python lsr.py basic_2.csv
+    $ python lsr.py test_2.csv
 \end{verbatim}
 
 After execution your program should print out the total reconstruction error, created by summing the error for every line segment, followed by a newline character:
@@ -168,7 +168,7 @@ After execution your program should print out the total reconstruction error, cr
 \end{verbatim}
 
 Additionally, to further understand and validate your solution we wish for your program to be able to visualise the result given an optional parameter, \texttt{--plot}.
-This is only to visually check that your solution is working (and so that you can save plots for your report).
+This is only to visually check that your solution is working and will not be part of the automarker (styling of the plot itself doesn't matter).
 For example, running:
 
 \begin{verbatim}
@@ -192,8 +192,7 @@ Note the presence of both the original points (blue dots) and fitted line segmen
     \item The error you need to calculate is the sum squared error. 
     \item Regardless of the number of segments your program needs to only output the total reconstruction error. 
     \item The test files will include points approximating line segments generated from the three functions mentioned above, \textit{i.e.} linear, polynomial or the unknown function. 
-    \item The order of the polynomial (and the form of the unknown function) \textbf{will not} change between different files/segments.
+    \item The order of the polynomial function \textbf{will not} change between different files.
     \item Having a very low error might not be the correct answer to a noisy solution, refer to overfitting in the lecture slides. 
-    \item You probably shouldn't use regularisation (the coursework is designed under the assumption that you'll use the simplest possible function classes to mitigate overfitting, rather than regularisation).
 \end{itemize}
 \end{document}
