@@ -41,11 +41,14 @@ def calculate_pdf(data):
     return result
 
 
+def least_squares_formula(x, y):
+    return np.linalg.inv(x.T.dot(x)).dot(x.T).dot(y)
+
+
 def least_squares(x, y):
     ones = np.ones(x.shape)
     x_with_ones = np.column_stack((ones, x))
-    result = np.linalg.inv(x_with_ones.T.dot(x_with_ones)).dot(x_with_ones.T).dot(y)
-    return result
+    return least_squares_formula(x_with_ones, y)
 
 
 def line_fitting(x, y):
@@ -60,45 +63,48 @@ def line_fitting(x, y):
     return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
 
 
+# the next step is probably this with cross validation
 def find_error(data):
     error = np.var(data) * (len(data) - 1)
     return error
 
 
 def quadratic_resizer(x):
-    return np.column_stack((np.ones(x.shape), x, x**2))
+    # for q in range(a):
+    # np.stack()
+    # 2d arrray with 1 array of 1s
+    # then append the set times the postition in the loop
+    return np.column_stack((np.ones(x.shape), x, x ** 2, x ** 3))
 
 
 def curved_line(x, y):
-    matrix = least_squares(x, y)
-    print(matrix)
-    sigma = 0  # output noise
-    quad_term = quadratic_resizer(x)
-    linear_term = -1
-    bias = 0
-    print(np.array(matrix))
-    part1 = np.array(quad_term) * np.array(matrix)
-    part2 = part1 ** 2
-    part3 = part2 + linear_term * matrix[0] + bias + sigma * y
-    return part3
+    resized_x = quadratic_resizer(x)
+    matrix = least_squares_formula(resized_x, y)
+    print("matrix: ", matrix)
+    return matrix
 
 
+print("Got here")
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
 totalX, totalY = load_points_from_file(datafile)
+print("Read in the data")
 start = 0
 end = 20
-while end < len(totalX):  # data is in chunks of 20
+print("Starting loop")
+while end <= len(totalX):  # data is in chunks of 20
+    print("Start: ", start, " End: ", end)
     X = totalX[start:end]
     Y = totalY[start:end]
-    print(X)
-    resultX, resultY = line_fitting(X, Y)
-    line = curved_line(X, Y)
+    print("X: ", X)
+    # resultX, resultY = line_fitting(X, Y)
+    matrix = curved_line(X, Y)
+    xs = np.linspace(X[0], X[19], 20)
+    # plt.plot(resultX, resultY, 'y-', lw=4)
+    plt.plot(xs, quadratic_resizer(xs) @ matrix, 'r-', lw=4)
     pdf = calculate_pdf(Y)
     print("Pdf:", pdf)
-    plt.plot(resultX, resultY, 'y-', lw=4)
-    plt.plot(line, 'm-', lw=4)
-    print("X: ", resultX)
-    print("Y: ", resultY)
+    # print("X: ", resultX)
+    # print("Y: ", resultY)
     Xerror = find_error(X)
     Yerror = find_error(Y)
     print("X error: ", Xerror)
@@ -107,3 +113,4 @@ while end < len(totalX):  # data is in chunks of 20
     view_data_segments(X, Y)
     start += 20
     end += 20
+print("Finished")
