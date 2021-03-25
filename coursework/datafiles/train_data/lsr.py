@@ -74,13 +74,14 @@ datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
 totalX, totalY = load_points_from_file(datafile)
 X = totalX[:20]
 Y = totalY[:20]
+print(X)
 resultX, resultY = line_fitting(X, Y)
 pdf = calculate_pdf(Y)
 print("Pdf:", pdf)
 plt.plot(resultX, resultY, 'r-', lw=4)
-curved_line(X, Y)
+# curved_line(X, Y)
 print("X: ", resultX)
-print("Y: ", resultY)
+#print("Y: ", resultY)
 Xerror = find_error(X)
 Yerror = find_error(Y)
 print("X error: ", Xerror)
