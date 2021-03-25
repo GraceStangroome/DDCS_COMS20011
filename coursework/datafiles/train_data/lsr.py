@@ -3,7 +3,6 @@ import sys
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-import random
 
 
 def load_points_from_file(filename):
@@ -43,19 +42,21 @@ def calculate_pdf(data):
 
 
 def least_squares(x, y):
-    X = np.column_stack((np.ones(x.shape), np.exp(x)))
-    result = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(y)
-    return result[0], result[1]
+    ones = np.ones(x.shape)
+    x_with_ones = np.column_stack((ones, x))
+    result = np.linalg.inv(x_with_ones.T.dot(x_with_ones)).dot(x_with_ones.T).dot(y)
+    return result
 
 
 def line_fitting(x, y):
-    least_squares_x, least_squares_y = least_squares(x, y)
+    least_square = least_squares(x, y)
+    least_squares_x, least_squares_y = least_square[0], least_square[1]
     print("Least Squares X:", least_squares_x)
     print("Least Squares Y:", least_squares_y)
     x_endpoint_min = x.min()
     x_endpoint_max = x.max()
-    y_endpoint_min = least_squares_x + least_squares_y * np.exp(x_endpoint_min)
-    y_endpoint_max = least_squares_x + least_squares_y * np.exp(x_endpoint_max)
+    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
+    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
     return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
 
 
@@ -64,35 +65,45 @@ def find_error(data):
     return error
 
 
+def quadratic_resizer(x):
+    return np.column_stack((np.ones(x.shape), x, x**2))
+
+
 def curved_line(x, y):
-    least_squares_x, least_squares_y = least_squares(x, y)
-    N = 20  # number of datapoints
-    D = 1  # dimension of datapoints
+    matrix = least_squares(x, y)
+    print(matrix)
     sigma = 0  # output noise
-    X = least_squares_x
-    qtrue = 2  # quadratic term
-    ltrue = -1  # linear term
-    btrue = 1  # bias
-    Y = qtrue * X ** 2 + ltrue * X + btrue + sigma * least_squares_y
-    return Y
+    quad_term = quadratic_resizer(x)
+    linear_term = -1
+    bias = 0
+    print(np.array(matrix))
+    part1 = np.array(quad_term) * np.array(matrix)
+    part2 = part1 ** 2
+    part3 = part2 + linear_term * matrix[0] + bias + sigma * y
+    return part3
 
 
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
 totalX, totalY = load_points_from_file(datafile)
-X = totalX[:20]
-Y = totalY[:20]
-print(X)
-resultX, resultY = line_fitting(X, Y)
-line = curved_line(X, Y)
-pdf = calculate_pdf(Y)
-print("Pdf:", pdf)
-plt.plot(resultX, resultY, 'r-', lw=4)
-# curved_line(X, Y)
-print("X: ", resultX)
-# print("Y: ", resultY)
-Xerror = find_error(X)
-Yerror = find_error(Y)
-print("X error: ", Xerror)
-print("Y error: ", Yerror)
-# view_data_segments(resultX, resultY)
-view_data_segments(X, Y)
+start = 0
+end = 20
+while end < len(totalX):  # data is in chunks of 20
+    X = totalX[start:end]
+    Y = totalY[start:end]
+    print(X)
+    resultX, resultY = line_fitting(X, Y)
+    line = curved_line(X, Y)
+    pdf = calculate_pdf(Y)
+    print("Pdf:", pdf)
+    plt.plot(resultX, resultY, 'y-', lw=4)
+    plt.plot(line, 'm-', lw=4)
+    print("X: ", resultX)
+    print("Y: ", resultY)
+    Xerror = find_error(X)
+    Yerror = find_error(Y)
+    print("X error: ", Xerror)
+    print("Y error: ", Yerror)
+    # view_data_segments(resultX, resultY)
+    view_data_segments(X, Y)
+    start += 20
+    end += 20
