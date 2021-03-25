@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+import random
 
 
 def load_points_from_file(filename):
@@ -42,9 +43,8 @@ def calculate_pdf(data):
 
 
 def least_squares(x, y):
-    ones = np.ones(x.shape)
-    x_with_ones = np.column_stack((ones, x))
-    result = np.linalg.inv(x_with_ones.T.dot(x_with_ones)).dot(x_with_ones.T).dot(y)
+    X = np.column_stack((np.ones(x.shape), np.exp(x)))
+    result = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(y)
     return result[0], result[1]
 
 
@@ -54,8 +54,8 @@ def line_fitting(x, y):
     print("Least Squares Y:", least_squares_y)
     x_endpoint_min = x.min()
     x_endpoint_max = x.max()
-    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
-    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
+    y_endpoint_min = least_squares_x + least_squares_y * np.exp(x_endpoint_min)
+    y_endpoint_max = least_squares_x + least_squares_y * np.exp(x_endpoint_max)
     return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
 
 
@@ -65,9 +65,16 @@ def find_error(data):
 
 
 def curved_line(x, y):
-    popt = np.polyfit(x, y, 2)
-    yn = np.polyval(popt, y)
-    plt.plot(x, yn)
+    least_squares_x, least_squares_y = least_squares(x, y)
+    N = 20  # number of datapoints
+    D = 1  # dimension of datapoints
+    sigma = 0  # output noise
+    X = least_squares_x
+    qtrue = 2  # quadratic term
+    ltrue = -1  # linear term
+    btrue = 1  # bias
+    Y = qtrue * X ** 2 + ltrue * X + btrue + sigma * least_squares_y
+    return Y
 
 
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
@@ -76,12 +83,13 @@ X = totalX[:20]
 Y = totalY[:20]
 print(X)
 resultX, resultY = line_fitting(X, Y)
+line = curved_line(X, Y)
 pdf = calculate_pdf(Y)
 print("Pdf:", pdf)
 plt.plot(resultX, resultY, 'r-', lw=4)
 # curved_line(X, Y)
 print("X: ", resultX)
-#print("Y: ", resultY)
+# print("Y: ", resultY)
 Xerror = find_error(X)
 Yerror = find_error(Y)
 print("X error: ", Xerror)

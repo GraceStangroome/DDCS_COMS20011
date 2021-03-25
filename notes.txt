@@ -1,0 +1,5 @@
+basic 1, 2, 4 straight lines 
+basic 3 + 5 curved
+adv 1, 2 + 3 straight lines with noise
+noise 1, 2 + 3 straight lines with noise
+
