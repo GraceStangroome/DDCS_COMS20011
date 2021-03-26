@@ -5,6 +5,19 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
+# no longer using
+def line_fitting(x, y):
+    least_square = least_squares(x, y)
+    least_squares_x, least_squares_y = least_square[0], least_square[1]
+    print("Least Squares X:", least_squares_x)
+    print("Least Squares Y:", least_squares_y)
+    x_endpoint_min = x.min()
+    x_endpoint_max = x.max()
+    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
+    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
+    return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
+
+
 def load_points_from_file(filename):
     """Loads 2d points from a csv called filename
     Args:
@@ -34,13 +47,6 @@ def view_data_segments(xs, ys):
     plt.show()
 
 
-def calculate_pdf(data):
-    fraction = 1 / (np.sqrt(np.var(data)) * np.sqrt(2 * np.pi))
-    exponent = - ((np.power((data - np.mean(data)), 2)) / (2 * np.var(data)))
-    result = fraction * np.power(np.e, exponent)
-    return result
-
-
 def least_squares_formula(x, y):
     return np.linalg.inv(x.T.dot(x)).dot(x.T).dot(y)
 
@@ -51,24 +57,6 @@ def least_squares(x, y):
     return least_squares_formula(x_with_ones, y)
 
 
-def line_fitting(x, y):
-    least_square = least_squares(x, y)
-    least_squares_x, least_squares_y = least_square[0], least_square[1]
-    print("Least Squares X:", least_squares_x)
-    print("Least Squares Y:", least_squares_y)
-    x_endpoint_min = x.min()
-    x_endpoint_max = x.max()
-    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
-    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
-    return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
-
-
-# the next step is probably this with cross validation
-def find_error(data):
-    error = np.var(data) * (len(data) - 1)
-    return error
-
-
 def quadratic_resizer(x):
     # for q in range(a):
     # np.stack()
@@ -77,39 +65,51 @@ def quadratic_resizer(x):
     return np.column_stack((np.ones(x.shape), x, x ** 2, x ** 3))
 
 
-def curved_line(x, y):
-    resized_x = quadratic_resizer(x)
-    matrix = least_squares_formula(resized_x, y)
-    print("matrix: ", matrix)
-    return matrix
+def curved_line():
+    resized_x = quadratic_resizer(X)
+    matrix = least_squares_formula(resized_x, Y)
+    # print("matrix: ", matrix)
+    xs = np.linspace(X[0], X[19], 20)
+    ys = quadratic_resizer(xs) @ matrix  # @ is matrix multiplication
+    return xs, ys
 
 
-print("Got here")
+def calculate_pdf(data):
+    fraction = 1 / (np.sqrt(np.var(data)) * np.sqrt(2 * np.pi))
+    exponent = - ((np.power((data - np.mean(data)), 2)) / (2 * np.var(data)))
+    result = fraction * np.power(np.e, exponent)
+    return result
+
+
+# the next step is probably this with cross validation
+def find_error(y_estimates):
+    error = np.sum((y_estimates - Y)**2)
+    return error
+
+
+def run_calculations():
+    # resultX, resultY = line_fitting(X, Y)
+    line_xs, line_ys = curved_line()
+    # plt.plot(resultX, resultY, 'y-', lw=4)
+    plt.plot(line_xs, line_ys, 'r-', lw=4)  # @ is matrix multiplication
+    # pdf = calculate_pdf(Y)
+    # print("Pdf:", pdf)
+    # print("X: ", resultX)
+    # print("Y: ", resultY)
+    error = find_error(line_ys)
+    print("Error: ", error)
+    # view_data_segments(resultX, resultY)
+
+
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
 totalX, totalY = load_points_from_file(datafile)
-print("Read in the data")
 start = 0
 end = 20
-print("Starting loop")
 while end <= len(totalX):  # data is in chunks of 20
     print("Start: ", start, " End: ", end)
     X = totalX[start:end]
     Y = totalY[start:end]
-    print("X: ", X)
-    # resultX, resultY = line_fitting(X, Y)
-    matrix = curved_line(X, Y)
-    xs = np.linspace(X[0], X[19], 20)
-    # plt.plot(resultX, resultY, 'y-', lw=4)
-    plt.plot(xs, quadratic_resizer(xs) @ matrix, 'r-', lw=4)
-    pdf = calculate_pdf(Y)
-    print("Pdf:", pdf)
-    # print("X: ", resultX)
-    # print("Y: ", resultY)
-    Xerror = find_error(X)
-    Yerror = find_error(Y)
-    print("X error: ", Xerror)
-    print("Y error: ", Yerror)
-    # view_data_segments(resultX, resultY)
+    run_calculations()
     view_data_segments(X, Y)
     start += 20
     end += 20
