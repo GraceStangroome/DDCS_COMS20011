@@ -89,14 +89,14 @@ def find_error(y_estimates):
 
 def run_calculations():
     # resultX, resultY = line_fitting(X, Y)
-    line_xs, line_ys = curved_line()
+    xs, ys = curved_line()
     # plt.plot(resultX, resultY, 'y-', lw=4)
-    plt.plot(line_xs, line_ys, 'r-', lw=4)  # @ is matrix multiplication
+    plt.plot(xs, ys, 'r-', lw=4)  # @ is matrix multiplication
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
     # print("X: ", resultX)
     # print("Y: ", resultY)
-    error = find_error(line_ys)
+    error = find_error(ys)
     print("Error: ", error)
     # view_data_segments(resultX, resultY)
 
