@@ -2,6 +2,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+from numpy import polynomial
 from matplotlib import pyplot as plt
 
 
@@ -83,8 +84,36 @@ def calculate_pdf(data):
 
 # the next step is probably this with cross validation
 def find_error(y_estimates):
-    error = np.sum((y_estimates - Y)**2)
+    error = np.sum((y_estimates - Y) ** 2)
     return error
+
+
+def cheb_formula(x, c):
+    # c is int
+    coefs = c * [0] + [1] # what is this notation
+    return np.polynomial.chebyshev.chebval(x, coefs)
+
+
+def chebyshev(data_x, order):
+    # assert (-1 <= data).all() and (data <= 1).all()
+    xs = []
+    for c in range(order):
+        xs.append(cheb_formula(data_x, c))
+        print(xs)
+    return np.concatenate(xs, np.ones(len(xs)))
+
+
+def cross_validation(order):
+    x_train = X[:7]
+    x_test = X[7:]
+    y_train = Y[:7]
+    y_test = Y[7:]
+
+    weight = least_squares_formula(chebyshev(x_train, order), y_train)
+    height_test = chebyshev(x_test, order) @ weight
+
+    cross_validation_error = ((y_test - height_test) ** 2).mean()
+    return cross_validation_error
 
 
 def run_calculations():
@@ -97,7 +126,9 @@ def run_calculations():
     # print("X: ", resultX)
     # print("Y: ", resultY)
     error = find_error(ys)
+    cross_val = cross_validation(10)
     print("Error: ", error)
+    print("Cross validation: ", cross_val)
     # view_data_segments(resultX, resultY)
 
 
