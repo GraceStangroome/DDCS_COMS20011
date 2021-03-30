@@ -1,3 +1,4 @@
+import random
 import sys
 
 import numpy as np
@@ -66,13 +67,13 @@ def quadratic_resizer(x):
     return np.column_stack((np.ones(x.shape), x, x ** 2, x ** 3))
 
 
-def curved_line():
-    resized_x = quadratic_resizer(X)
-    matrix = least_squares_formula(resized_x, Y)
+def curved_line(xs, ys):
+    resized_x = quadratic_resizer(xs)
+    matrix = least_squares_formula(resized_x, ys)
     # print("matrix: ", matrix)
-    xs = np.linspace(X[0], X[19], 20)
-    ys = quadratic_resizer(xs) @ matrix  # @ is matrix multiplication
-    return xs, ys
+    resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
+    resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiplication
+    return resulting_x, resulting_y
 
 
 def calculate_pdf(data):
@@ -83,14 +84,18 @@ def calculate_pdf(data):
 
 
 # the next step is probably this with cross validation
-def find_error(y_estimates):
-    error = np.sum((y_estimates - Y) ** 2)
+def find_error(y_estimates, y_test):
+    error = 0
+    for i in range(len(y_test)):
+        for j in range(len(y_estimates)):
+            error += ((y_estimates[j] - y_test[i]) ** 2)
+    error = error / 4
     return error
 
 
 def cheb_formula(x, c):
     # c is int
-    coefs = c * [0] + [1] # what is this notation
+    coefs = c * [0] + [1]   # what is this notation
     return np.polynomial.chebyshev.chebval(x, coefs)
 
 
@@ -103,32 +108,39 @@ def chebyshev(data_x, order):
     return np.concatenate(xs, np.ones(len(xs)))
 
 
-def cross_validation(order):
-    x_train = X[:7]
-    x_test = X[7:]
-    y_train = Y[:7]
-    y_test = Y[7:]
-
-    weight = least_squares_formula(chebyshev(x_train, order), y_train)
-    height_test = chebyshev(x_test, order) @ weight
-
-    cross_validation_error = ((y_test - height_test) ** 2).mean()
-    return cross_validation_error
+def cross_validation(ys, y_test):
+    error = find_error(ys, y_test)
+    return error
 
 
 def run_calculations():
     # resultX, resultY = line_fitting(X, Y)
-    xs, ys = curved_line()
+    # Using 80% of the data for training
+    x_train, y_train = np.empty(16), np.empty(16)
+    x_test, y_test = np.empty(4), np.empty(4)
+    options = [i for i in range(0, 20)]  # using X for no reason, could be Y, but X + Y should be the same length
+    # randomly choosing 16 elements of X and Y for training
+    for i in range(16):
+        for_training = random.choice(options)
+        x_train[i] = X[for_training]
+        y_train[i] = Y[for_training]
+        options.remove(for_training)
+    # the remaining options are for testing
+    for i in range(4):
+        x_test[i] = X[options[i]]
+        y_test[i] = Y[options[i]]
+
+    xs, ys = curved_line(x_train, y_train)
     # plt.plot(resultX, resultY, 'y-', lw=4)
     plt.plot(xs, ys, 'r-', lw=4)  # @ is matrix multiplication
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
     # print("X: ", resultX)
     # print("Y: ", resultY)
-    error = find_error(ys)
-    cross_val = cross_validation(10)
+    error = find_error(ys, y_test)
+    # cross_val = cross_validation(ys, y_test)
     print("Error: ", error)
-    print("Cross validation: ", cross_val)
+    # print("Cross validation: ", cross_val)
     # view_data_segments(resultX, resultY)
 
 
