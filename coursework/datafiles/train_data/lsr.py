@@ -15,8 +15,8 @@ def line_fitting(x, y):
     print("Least Squares Y:", least_squares_y)
     x_endpoint_min = x.min()
     x_endpoint_max = x.max()
-    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
-    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
+    y_endpoint_min = np.sin(least_squares_x + least_squares_y * x_endpoint_min)
+    y_endpoint_max = np.sin(least_squares_x + least_squares_y * x_endpoint_max)
     return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
 
 
@@ -72,8 +72,9 @@ def curved_line(xs, ys):
     matrix = least_squares_formula(resized_x, ys)
     # print("matrix: ", matrix)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
-    resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiplication
-    return resulting_x, resulting_y
+    resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiresized_xplication
+    unknown_function = line_fitting(xs, ys)
+    return resulting_x, resulting_y, unknown_function
 
 
 def calculate_pdf(data):
@@ -130,9 +131,10 @@ def run_calculations():
         x_test[i] = X[options[i]]
         y_test[i] = Y[options[i]]
 
-    xs, ys = curved_line(x_train, y_train)
+    xs, ys, unknown_function = curved_line(x_train, y_train)
     # plt.plot(resultX, resultY, 'y-', lw=4)
-    plt.plot(xs, ys, 'r-', lw=4)  # @ is matrix multiplication
+    plt.plot(xs, ys, 'r-', lw=4)
+    plt.plot(unknown_function, 'y-', lw=4)
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
     # print("X: ", resultX)
