@@ -57,30 +57,26 @@ def least_squares(x, y):
 
 
 def quadratic_resizer(x):
-    # for q in range(a):
-    # np.stack()
-    # 2d arrray with 1 array of 1s
-    # then append the set times the postition in the loop
     return np.column_stack((np.ones(x.shape), x, x ** 2, x ** 3))
 
 
 def polynomial_line(xs, ys):
     resized_x = quadratic_resizer(xs)
     matrix = least_squares_formula(resized_x, ys)
-    # print("matrix: ", matrix)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
-    resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiresized_xplication
+    resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiplication
+    print(resulting_x)
+    print(resulting_y)
     return resulting_x, resulting_y
 
 
 def unknown_line(xs, ys):
     #  bias + sin(x)
-    resized_x = quadratic_resizer(xs)
-    matrix = least_squares_formula(resized_x, ys)
-    calculated_xs = np.linspace(np.sin(X[0]), np.sin(X[19]), 20)
-    calculated_ys = quadratic_resizer(calculated_xs) @ matrix
-    #plt.plot(calculated_xs, calculated_ys, 'y-', lw=3)
-    return calculated_xs, calculated_ys
+    mean = np.sum(xs) / len(xs)
+    bias = (1/len(xs)) * np.sum((xs - mean) ** 2)
+    calculated_ys = np.sin(ys) + bias
+    plt.plot(xs, calculated_ys, 'y-', lw=3)
+    return xs, calculated_ys
 
 
 def calculate_pdf(data):
