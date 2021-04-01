@@ -3,21 +3,18 @@ import sys
 
 import numpy as np
 import pandas as pd
-from numpy import polynomial
 from matplotlib import pyplot as plt
 
 
 # no longer using
-def line_fitting(x, y):
-    least_square = least_squares(x, y)
-    least_squares_x, least_squares_y = least_square[0], least_square[1]
-    print("Least Squares X:", least_squares_x)
-    print("Least Squares Y:", least_squares_y)
-    x_endpoint_min = x.min()
-    x_endpoint_max = x.max()
-    y_endpoint_min = np.sin(least_squares_x + least_squares_y * x_endpoint_min)
-    y_endpoint_max = np.sin(least_squares_x + least_squares_y * x_endpoint_max)
-    return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
+# def straight_line(x, y):
+#     least_square = least_squares(x, y)
+#     least_squares_x, least_squares_y = least_square[0], least_square[1]
+#     x_endpoint_min = x.min()
+#     x_endpoint_max = x.max()
+#     y_endpoint_min = np.sin(least_squares_x + least_squares_y * x_endpoint_min)
+#     y_endpoint_max = np.sin(least_squares_x + least_squares_y * x_endpoint_max)
+#     return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
 
 
 def load_points_from_file(filename):
@@ -67,14 +64,23 @@ def quadratic_resizer(x):
     return np.column_stack((np.ones(x.shape), x, x ** 2, x ** 3))
 
 
-def curved_line(xs, ys):
+def polynomial_line(xs, ys):
     resized_x = quadratic_resizer(xs)
     matrix = least_squares_formula(resized_x, ys)
     # print("matrix: ", matrix)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
     resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiresized_xplication
-    unknown_function = line_fitting(xs, ys)
-    return resulting_x, resulting_y, unknown_function
+    return resulting_x, resulting_y
+
+
+def unknown_line(xs, ys):
+    #  bias + sin(x)
+    resized_x = quadratic_resizer(xs)
+    matrix = least_squares_formula(resized_x, ys)
+    calculated_xs = np.linspace(np.sin(X[0]), np.sin(X[19]), 20)
+    calculated_ys = quadratic_resizer(calculated_xs) @ matrix
+    #plt.plot(calculated_xs, calculated_ys, 'y-', lw=3)
+    return calculated_xs, calculated_ys
 
 
 def calculate_pdf(data):
@@ -84,38 +90,29 @@ def calculate_pdf(data):
     return result
 
 
-# the next step is probably this with cross validation
 def find_error(y_estimates, y_test):
-    error = 0
-    for i in range(len(y_test)):
-        for j in range(len(y_estimates)):
-            error += ((y_estimates[j] - y_test[i]) ** 2)
-    error = error / 4
-    return error
+    mean = np.sum(y_test) / 4
+    deviation_squared = (y_estimates - mean) ** 2
+    this_error = np.sum(deviation_squared)
+    return this_error
 
 
-def cheb_formula(x, c):
-    # c is int
-    coefs = c * [0] + [1]   # what is this notation
-    return np.polynomial.chebyshev.chebval(x, coefs)
-
-
-def chebyshev(data_x, order):
-    # assert (-1 <= data).all() and (data <= 1).all()
-    xs = []
-    for c in range(order):
-        xs.append(cheb_formula(data_x, c))
-        print(xs)
-    return np.concatenate(xs, np.ones(len(xs)))
-
-
-def cross_validation(ys, y_test):
-    error = find_error(ys, y_test)
-    return error
+# def cheb_formula(x, c):
+#     # c is int
+#     coefs = c * [0] + [1]   # what is this notation
+#     return np.polynomial.chebyshev.chebval(x, coefs)
+#
+#
+# def chebyshev(data_x, order):
+#     # assert (-1 <= data).all() and (data <= 1).all()
+#     xs = []
+#     for c in range(order):
+#         xs.append(cheb_formula(data_x, c))
+#         print(xs)
+#     return np.concatenate(xs, np.ones(len(xs)))
 
 
 def run_calculations():
-    # resultX, resultY = line_fitting(X, Y)
     # Using 80% of the data for training
     x_train, y_train = np.empty(16), np.empty(16)
     x_test, y_test = np.empty(4), np.empty(4)
@@ -131,31 +128,37 @@ def run_calculations():
         x_test[i] = X[options[i]]
         y_test[i] = Y[options[i]]
 
-    xs, ys, unknown_function = curved_line(x_train, y_train)
-    # plt.plot(resultX, resultY, 'y-', lw=4)
-    plt.plot(xs, ys, 'r-', lw=4)
-    plt.plot(unknown_function, 'y-', lw=4)
+    # calculating the two possible lines
+    polynomial_xs, polynomial_ys = polynomial_line(x_train, y_train)
+    unknown_func_xs, unknown_func_ys = unknown_line(polynomial_xs, polynomial_ys)
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
-    # print("X: ", resultX)
-    # print("Y: ", resultY)
-    error = find_error(ys, y_test)
-    # cross_val = cross_validation(ys, y_test)
-    print("Error: ", error)
-    # print("Cross validation: ", cross_val)
-    # view_data_segments(resultX, resultY)
+
+    # calculating errors
+    polynomial_error = find_error(polynomial_ys, y_test)
+    unknown_error = find_error(unknown_func_ys, y_test)
+
+    # deciding which is better, and returning it
+    this_error = min(polynomial_error, unknown_error)
+    if this_error == polynomial_error:
+        return polynomial_xs, polynomial_ys, this_error
+    else:
+        return unknown_func_xs, unknown_func_ys, this_error
 
 
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
 totalX, totalY = load_points_from_file(datafile)
 start = 0
 end = 20
+error = 0
 while end <= len(totalX):  # data is in chunks of 20
-    print("Start: ", start, " End: ", end)
     X = totalX[start:end]
     Y = totalY[start:end]
-    run_calculations()
-    view_data_segments(X, Y)
+    line_xs, line_ys, calculated_error = run_calculations()
+    error += calculated_error
+    plt.plot(line_xs, line_ys, 'r-', lw=3)
     start += 20
     end += 20
+view_data_segments(totalX, totalY)
+print("Total Error: ", error)
 print("Finished")
