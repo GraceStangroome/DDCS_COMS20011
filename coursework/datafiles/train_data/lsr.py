@@ -65,9 +65,8 @@ def polynomial_line(xs, ys):
     matrix = least_squares_formula(resized_x, ys)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
     resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiplication
-    print(resulting_x)
-    print(resulting_y)
-    return resulting_x, resulting_y
+    plt.plot(resulting_x, resulting_y, 'b-', lw=1)
+    return resulting_x, resulting_y, matrix
 
 
 def unknown_line(xs, ys):
@@ -75,7 +74,7 @@ def unknown_line(xs, ys):
     mean = np.sum(xs) / len(xs)
     bias = (1/len(xs)) * np.sum((xs - mean) ** 2)
     calculated_ys = np.sin(ys) + bias
-    plt.plot(xs, calculated_ys, 'y-', lw=3)
+    plt.plot(xs, calculated_ys, 'y-', lw=1)
     return xs, calculated_ys
 
 
@@ -125,21 +124,29 @@ def run_calculations():
         y_test[i] = Y[options[i]]
 
     # calculating the two possible lines
-    polynomial_xs, polynomial_ys = polynomial_line(x_train, y_train)
+    polynomial_xs, polynomial_ys, polynomial_coefs = polynomial_line(x_train, y_train)
     unknown_func_xs, unknown_func_ys = unknown_line(polynomial_xs, polynomial_ys)
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
 
     # calculating errors
-    polynomial_error = find_error(polynomial_ys, y_test)
+    polynomial_error = find_error(polynomial_coefs, y_test)
     unknown_error = find_error(unknown_func_ys, y_test)
 
-    # deciding which is better, and returning it
+    # deciding which is better, recalculating for the whole data set and returning it
     this_error = min(polynomial_error, unknown_error)
+    print("Polynomial error: ", polynomial_error)
+    print("Unknown error: ", unknown_error)
     if this_error == polynomial_error:
-        return polynomial_xs, polynomial_ys, this_error
+        print("Chose poly")
+        true_xs, true_ys, true_coefs = polynomial_line(X, Y)
+        true_error = find_error(true_coefs, Y)
+        return true_xs, true_ys, true_error
     else:
-        return unknown_func_xs, unknown_func_ys, this_error
+        print("Chose unknown")
+        true_xs, true_ys = unknown_line(X, Y)
+        true_error = find_error(true_ys, y_test)
+        return true_xs, true_ys, true_error
 
 
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
