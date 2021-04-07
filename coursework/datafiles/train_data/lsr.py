@@ -60,6 +60,10 @@ def quadratic_resizer(x):
     return np.column_stack((np.ones(x.shape), x, x ** 2, x ** 3))
 
 
+def unknown_resizer(x):
+    return np.column_stack((x, np.ones(x.shape)))
+
+
 def polynomial_line(xs, ys):
     resized_x = quadratic_resizer(xs)
     matrix = least_squares_formula(resized_x, ys)
@@ -70,12 +74,12 @@ def polynomial_line(xs, ys):
 
 
 def unknown_line(xs, ys):
-    #  bias + sin(x)
-    mean = np.sum(xs) / len(xs)
-    bias = (1/len(xs)) * np.sum((xs - mean) ** 2)
-    calculated_ys = np.sin(ys) + bias
+    calculated_xs = np.sin(xs)
+    coefficients = least_squares_formula(unknown_resizer(calculated_xs), ys)
+    bias = np.column_stack((calculated_xs, np.ones(calculated_xs.shape)))
+    calculated_ys = bias @ coefficients
     plt.plot(xs, calculated_ys, 'y-', lw=1)
-    return xs, calculated_ys
+    return xs, calculated_ys, coefficients
 
 
 def calculate_pdf(data):
@@ -85,34 +89,31 @@ def calculate_pdf(data):
     return result
 
 
-def find_error(y_estimates, y_test):
-    mean = np.sum(y_test) / 4
-    deviation_squared = (y_estimates - mean) ** 2
+def squared_error(estimatedY, testY):
+    error = 0
+    for i in range(4):
+        difference = estimatedY[i] - testY[i]
+        error += difference * difference
+    return error
+
+
+# estimatedY = []
+# for x in testX:
+#  estimatedY.append( unknownCoefficient[0] * sin(x) + unknownCoefficient[1])
+# need to find the difference at each position
+def find_error(coeffs, x_test, y_test):
+    for i in range(len(x_test)):
+    deviation_squared = (coeffs * x_test - y_test) ** 2
     this_error = np.sum(deviation_squared)
     return this_error
-
-
-# def cheb_formula(x, c):
-#     # c is int
-#     coefs = c * [0] + [1]   # what is this notation
-#     return np.polynomial.chebyshev.chebval(x, coefs)
-#
-#
-# def chebyshev(data_x, order):
-#     # assert (-1 <= data).all() and (data <= 1).all()
-#     xs = []
-#     for c in range(order):
-#         xs.append(cheb_formula(data_x, c))
-#         print(xs)
-#     return np.concatenate(xs, np.ones(len(xs)))
 
 
 def run_calculations():
     # Using 80% of the data for training
     x_train, y_train = np.empty(16), np.empty(16)
     x_test, y_test = np.empty(4), np.empty(4)
-    options = [i for i in range(0, 20)]  # using X for no reason, could be Y, but X + Y should be the same length
-    # randomly choosing 16 elements of X and Y for training
+    options = [i for i in range(0, 20)]  # using X for no reason, could be Y, but both X and Y should be the same length
+    # randomly choosing the 16 elements of X and Y for training
     for i in range(16):
         for_training = random.choice(options)
         x_train[i] = X[for_training]
@@ -124,14 +125,14 @@ def run_calculations():
         y_test[i] = Y[options[i]]
 
     # calculating the two possible lines
-    polynomial_xs, polynomial_ys, polynomial_coefs = polynomial_line(x_train, y_train)
-    unknown_func_xs, unknown_func_ys = unknown_line(polynomial_xs, polynomial_ys)
+    polynomial_xs, polynomial_ys, poly_coefs = polynomial_line(x_train, y_train)
+    unknown_func_xs, unknown_func_ys, unknown_coefs = unknown_line(x_train, y_train)
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
 
     # calculating errors
-    polynomial_error = find_error(polynomial_coefs, y_test)
-    unknown_error = find_error(unknown_func_ys, y_test)
+    polynomial_error = find_error(poly_coefs, polynomial_xs, y_test)
+    unknown_error = find_error(unknown_coefs, unknown_func_xs, y_test)
 
     # deciding which is better, recalculating for the whole data set and returning it
     this_error = min(polynomial_error, unknown_error)
@@ -140,13 +141,11 @@ def run_calculations():
     if this_error == polynomial_error:
         print("Chose poly")
         true_xs, true_ys, true_coefs = polynomial_line(X, Y)
-        true_error = find_error(true_coefs, Y)
-        return true_xs, true_ys, true_error
     else:
         print("Chose unknown")
-        true_xs, true_ys = unknown_line(X, Y)
-        true_error = find_error(true_ys, y_test)
-        return true_xs, true_ys, true_error
+        true_xs, true_ys, true_coefs = unknown_line(X, Y)
+    true_error = find_error(true_coefs, true_xs, Y)
+    return true_xs, true_ys, true_error
 
 
 datafile = sys.argv[1]  # sys.argv contains the arguments passed to the program
