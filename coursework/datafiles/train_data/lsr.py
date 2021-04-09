@@ -6,17 +6,6 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-# no longer using
-# def straight_line(x, y):
-#     least_square = least_squares(x, y)
-#     least_squares_x, least_squares_y = least_square[0], least_square[1]
-#     x_endpoint_min = x.min()
-#     x_endpoint_max = x.max()
-#     y_endpoint_min = np.sin(least_squares_x + least_squares_y * x_endpoint_min)
-#     y_endpoint_max = np.sin(least_squares_x + least_squares_y * x_endpoint_max)
-#     return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max]
-
-
 def load_points_from_file(filename):
     """Loads 2d points from a csv called filename
     Args:
@@ -64,6 +53,17 @@ def unknown_resizer(x):
     return np.column_stack((x, np.ones(x.shape)))
 
 
+def linear_line(xs, ys):
+    least_square = least_squares(xs, ys)
+    least_squares_x, least_squares_y = least_square[0], least_square[1]
+    x_endpoint_min = xs.min()
+    x_endpoint_max = xs.max()
+    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
+    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
+    plt.plot([x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max], 'g-', lw=1)
+    return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max], least_squares_y, least_squares_x
+
+
 def polynomial_line(xs, ys):
     resized_x = quadratic_resizer(xs)
     matrix = least_squares_formula(resized_x, ys)
@@ -89,23 +89,33 @@ def calculate_pdf(data):
     return result
 
 
-def squared_error(estimatedY, testY):
-    error = 0
-    for i in range(4):
-        difference = estimatedY[i] - testY[i]
-        error += difference * difference
-    return error
-
-
-# estimatedY = []
-# for x in testX:
-#  estimatedY.append( unknownCoefficient[0] * sin(x) + unknownCoefficient[1])
-# need to find the difference at each position
-def find_error(coeffs, x_test, y_test):
-    for i in range(len(x_test)):
-    deviation_squared = (coeffs * x_test - y_test) ** 2
-    this_error = np.sum(deviation_squared)
+def squared_error(estimated_y, test_y):
+    this_error = 0
+    for i in range(len(estimated_y)):
+        squared_difference = (estimated_y[i] - test_y[i]) ** 2
+        this_error += squared_difference
     return this_error
+
+
+def find_linear_error(gradient, y_intercept, x_test, y_test):
+    y_estimates = []
+    for x in x_test:
+        y_estimates.append(gradient * x + y_intercept)
+    return squared_error(y_estimates, y_test)
+
+
+def find_poly_error(coeffs, x_test, y_test):
+    y_estimates = []
+    for x in x_test:
+        y_estimates.append(coeffs[0] * x ** 3 + coeffs[1] * x ** 2 + coeffs[2] * x + coeffs[3])
+    return squared_error(y_estimates, y_test)
+
+
+def find_unknown_error(coeffs, x_test, y_test):
+    y_estimates = []
+    for x in x_test:
+        y_estimates.append(coeffs[0] * np.sin(x) + coeffs[1])
+    return squared_error(y_estimates, y_test)
 
 
 def run_calculations():
@@ -125,26 +135,34 @@ def run_calculations():
         y_test[i] = Y[options[i]]
 
     # calculating the two possible lines
+    linear_xs, linear_ys, gradient, y_intercept = linear_line(x_train, y_train)
     polynomial_xs, polynomial_ys, poly_coefs = polynomial_line(x_train, y_train)
     unknown_func_xs, unknown_func_ys, unknown_coefs = unknown_line(x_train, y_train)
     # pdf = calculate_pdf(Y)
     # print("Pdf:", pdf)
 
     # calculating errors
-    polynomial_error = find_error(poly_coefs, polynomial_xs, y_test)
-    unknown_error = find_error(unknown_coefs, unknown_func_xs, y_test)
+    linear_error = find_linear_error(gradient, y_intercept, x_test, y_test)
+    polynomial_error = find_poly_error(poly_coefs, x_test, y_test)
+    unknown_error = find_unknown_error(unknown_coefs, x_test, y_test)
 
     # deciding which is better, recalculating for the whole data set and returning it
-    this_error = min(polynomial_error, unknown_error)
+    this_error = min(linear_error, polynomial_error, unknown_error)
+    print("Linear error: ", linear_error)
     print("Polynomial error: ", polynomial_error)
     print("Unknown error: ", unknown_error)
-    if this_error == polynomial_error:
+    if this_error == linear_error:
+        print("Chose linear")
+        true_xs, true_ys, true_gradient, true_y_intercept = linear_line(X, Y)
+        true_error = find_linear_error(true_gradient, true_y_intercept, true_xs, Y)
+    elif this_error == polynomial_error:
         print("Chose poly")
         true_xs, true_ys, true_coefs = polynomial_line(X, Y)
+        true_error = find_poly_error(true_coefs, true_xs, Y)
     else:
         print("Chose unknown")
         true_xs, true_ys, true_coefs = unknown_line(X, Y)
-    true_error = find_error(true_coefs, true_xs, Y)
+        true_error = find_unknown_error(true_coefs, true_xs, Y)
     return true_xs, true_ys, true_error
 
 
