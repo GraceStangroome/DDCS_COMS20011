@@ -54,14 +54,11 @@ def unknown_resizer(x):
 
 
 def linear_line(xs, ys):
-    least_square = least_squares(xs, ys)
-    least_squares_x, least_squares_y = least_square[0], least_square[1]
-    x_endpoint_min = xs.min()
-    x_endpoint_max = xs.max()
-    y_endpoint_min = least_squares_x + least_squares_y * x_endpoint_min
-    y_endpoint_max = least_squares_x + least_squares_y * x_endpoint_max
-    plt.plot([x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max], 'g-', lw=1)
-    return [x_endpoint_min, x_endpoint_max], [y_endpoint_min, y_endpoint_max], least_squares_y, least_squares_x
+    coefficients = least_squares(xs, ys)
+    resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
+    y_intercept, gradient = coefficients[0], coefficients[1]
+    calculated_ys = y_intercept + gradient * resulting_x
+    return resulting_x, calculated_ys, gradient, y_intercept
 
 
 def polynomial_line(xs, ys):
@@ -69,7 +66,6 @@ def polynomial_line(xs, ys):
     matrix = least_squares_formula(resized_x, ys)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
     resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiplication
-    plt.plot(resulting_x, resulting_y, 'b-', lw=1)
     return resulting_x, resulting_y, matrix
 
 
@@ -78,7 +74,6 @@ def unknown_line(xs, ys):
     coefficients = least_squares_formula(unknown_resizer(calculated_xs), ys)
     bias = np.column_stack((calculated_xs, np.ones(calculated_xs.shape)))
     calculated_ys = bias @ coefficients
-    plt.plot(xs, calculated_ys, 'y-', lw=1)
     return xs, calculated_ys, coefficients
 
 
@@ -107,7 +102,7 @@ def find_linear_error(gradient, y_intercept, x_test, y_test):
 def find_poly_error(coeffs, x_test, y_test):
     y_estimates = []
     for x in x_test:
-        y_estimates.append(coeffs[0] * x ** 3 + coeffs[1] * x ** 2 + coeffs[2] * x + coeffs[3])
+        y_estimates.append((coeffs[3] * (x ** 3)) + (coeffs[2] * (x ** 2)) + (coeffs[1] * x) + coeffs[0])
     return squared_error(y_estimates, y_test)
 
 
@@ -118,51 +113,81 @@ def find_unknown_error(coeffs, x_test, y_test):
     return squared_error(y_estimates, y_test)
 
 
-def run_calculations():
+def find_best(all_results):
+    i = 0
+    # I tried using sorted but it didn't seem to work
+    smallest_error_so_far = 99999999999  # set to really high, so that it is overwritten
+    best_result = []
+    for result in all_results:
+        if result[1] < smallest_error_so_far:
+            smallest_error_so_far = result[1]
+            best_result = result
+        i += 1
+    return best_result
+
+
+def cross_validation():
     # Using 80% of the data for training
-    x_train, y_train = np.empty(16), np.empty(16)
-    x_test, y_test = np.empty(4), np.empty(4)
-    options = [i for i in range(0, 20)]  # using X for no reason, could be Y, but both X and Y should be the same length
+    j = 0
+    all_results = []
     # randomly choosing the 16 elements of X and Y for training
-    for i in range(16):
-        for_training = random.choice(options)
-        x_train[i] = X[for_training]
-        y_train[i] = Y[for_training]
-        options.remove(for_training)
-    # the remaining options are for testing
-    for i in range(4):
-        x_test[i] = X[options[i]]
-        y_test[i] = Y[options[i]]
+    while j in range(100):
+        x_train, y_train = np.empty(16), np.empty(16)
+        x_test, y_test = np.empty(4), np.empty(4)
+        options = [i for i in range(0, 20)]  # using X for no reason, could be Y as len(X) == len(Y)
+        for i in range(4):  # it won't necessarily add a new one every time
+            for_testing = random.choice(options)
+            x_test[i] = X[for_testing]
+            y_test[i] = Y[for_testing]
+            options.remove(for_testing)
+            i += 1
+        # the remaining options are for training
+        for i in range(16):
+            x_train[i] = X[options[i]]
+            y_train[i] = Y[options[i]]
 
-    # calculating the two possible lines
-    linear_xs, linear_ys, gradient, y_intercept = linear_line(x_train, y_train)
-    polynomial_xs, polynomial_ys, poly_coefs = polynomial_line(x_train, y_train)
-    unknown_func_xs, unknown_func_ys, unknown_coefs = unknown_line(x_train, y_train)
-    # pdf = calculate_pdf(Y)
-    # print("Pdf:", pdf)
+        linear_xs, linear_ys, gradient, y_intercept = linear_line(x_train, y_train)
+        polynomial_xs, polynomial_ys, poly_coefs = polynomial_line(x_train, y_train)
+        unknown_func_xs, unknown_func_ys, unknown_coefs = unknown_line(x_train, y_train)
 
-    # calculating errors
-    linear_error = find_linear_error(gradient, y_intercept, x_test, y_test)
-    polynomial_error = find_poly_error(poly_coefs, x_test, y_test)
-    unknown_error = find_unknown_error(unknown_coefs, x_test, y_test)
+        # calculating errors
+        linear_error = find_linear_error(gradient, y_intercept, x_test, y_test)
+        #print("Linear error: ", linear_error)
+        polynomial_error = find_poly_error(poly_coefs, x_test, y_test)
+        #print("Polynomial error: ", polynomial_error)
+        unknown_error = find_unknown_error(unknown_coefs, x_test, y_test)
+        #print("Unknown error: ", unknown_error)
 
-    # deciding which is better, recalculating for the whole data set and returning it
-    this_error = min(linear_error, polynomial_error, unknown_error)
-    print("Linear error: ", linear_error)
-    print("Polynomial error: ", polynomial_error)
-    print("Unknown error: ", unknown_error)
-    if this_error == linear_error:
-        print("Chose linear")
-        true_xs, true_ys, true_gradient, true_y_intercept = linear_line(X, Y)
-        true_error = find_linear_error(true_gradient, true_y_intercept, true_xs, Y)
-    elif this_error == polynomial_error:
-        print("Chose poly")
-        true_xs, true_ys, true_coefs = polynomial_line(X, Y)
-        true_error = find_poly_error(true_coefs, true_xs, Y)
+        # deciding which is better, and storing it
+        this_error = min(linear_error, polynomial_error, unknown_error)
+        if this_error == linear_error:
+            #print("Chose linear on iteration ", j)
+            all_results.append(["linear", linear_error, gradient, y_intercept, linear_xs, linear_ys])
+        elif this_error == polynomial_error:
+            #print("Chose poly on iteration ", j)
+            all_results.append(["polynomial", polynomial_error, poly_coefs, polynomial_xs, polynomial_ys])
+        else:
+            #print("Chose unknown on iteration ", j)
+            all_results.append(["unknown", unknown_error, unknown_coefs, unknown_func_xs, unknown_func_ys])
+        j += 1
+    return all_results
+
+
+def run_calculations():
+    chosen_one = find_best(cross_validation())
+    # recalculating the lines and errors for the whole data set and returning it
+    if chosen_one[0] == "linear":
+        # print("Chose linear with error of ", chosen_one[1])
+        true_xs, true_ys = chosen_one[4], chosen_one[5]
+        true_error = find_linear_error(chosen_one[2], chosen_one[3], X, Y)
+    elif chosen_one[0] == "polynomial":
+        # print("Chose poly with error of ", chosen_one[1])
+        true_xs, true_ys = chosen_one[3], chosen_one[4]
+        true_error = find_poly_error(chosen_one[2], X, Y)
     else:
-        print("Chose unknown")
-        true_xs, true_ys, true_coefs = unknown_line(X, Y)
-        true_error = find_unknown_error(true_coefs, true_xs, Y)
+        # print("Chose unknown with error of ", chosen_one[1])
+        true_xs, true_ys = chosen_one[3], chosen_one[4]
+        true_error = find_unknown_error(chosen_one[2], X, Y)
     return true_xs, true_ys, true_error
 
 
@@ -179,6 +204,7 @@ while end <= len(totalX):  # data is in chunks of 20
     plt.plot(line_xs, line_ys, 'r-', lw=3)
     start += 20
     end += 20
-view_data_segments(totalX, totalY)
-print("Total Error: ", error)
-print("Finished")
+print(error)
+if len(sys.argv) >= 3:
+    if sys.argv[2] == "--plot":
+        view_data_segments(totalX, totalY)
