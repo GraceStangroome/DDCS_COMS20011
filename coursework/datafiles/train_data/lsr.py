@@ -186,6 +186,7 @@ while end <= len(totalX):  # data is in chunks of 20
     line_xs, line_ys, calculated_error = run_calculations()
     error += calculated_error
     plt.plot(line_xs, line_ys, 'r-', lw=3)
+    view_data_segments(X, Y)  # show each section
     start += 20
     end += 20
 if len(sys.argv) >= 3:
