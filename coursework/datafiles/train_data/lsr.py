@@ -1,6 +1,5 @@
 import random
 import sys
-
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -39,10 +38,8 @@ def least_squares_formula(x, y):
     return np.linalg.inv(x.T.dot(x)).dot(x.T).dot(y)
 
 
-def least_squares(x, y):
-    ones = np.ones(x.shape)
-    x_with_ones = np.column_stack((ones, x))
-    return least_squares_formula(x_with_ones, y)
+def linear_resizer(x):
+    return np.column_stack((np.ones(x.shape), x))
 
 
 def quadratic_resizer(x):
@@ -54,7 +51,7 @@ def unknown_resizer(x):
 
 
 def linear_line(xs, ys):
-    coefficients = least_squares(xs, ys)
+    coefficients = least_squares_formula(linear_resizer(xs), ys)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
     y_intercept, gradient = coefficients[0], coefficients[1]
     calculated_ys = y_intercept + gradient * resulting_x
@@ -62,16 +59,14 @@ def linear_line(xs, ys):
 
 
 def polynomial_line(xs, ys):
-    resized_x = quadratic_resizer(xs)
-    matrix = least_squares_formula(resized_x, ys)
+    matrix = least_squares_formula(quadratic_resizer(xs), ys)
     resulting_x = np.linspace(X[0], X[19], 20)  # uses X over 20 so that it covers all the data
     resulting_y = quadratic_resizer(resulting_x) @ matrix  # @ is matrix multiplication
     return resulting_x, resulting_y, matrix
 
 
 def unknown_line(xs, ys):
-    calculated_xs = np.sin(xs)
-    bias = unknown_resizer(calculated_xs)
+    bias = unknown_resizer(np.sin(xs))
     coefficients = least_squares_formula(bias, ys)
     calculated_ys = bias @ coefficients
     return xs, calculated_ys, coefficients
@@ -127,7 +122,7 @@ def cross_validation():
         x_train, y_train = np.empty(16), np.empty(16)
         x_test, y_test = np.empty(4), np.empty(4)
         options = [i for i in range(0, 20)]  # using X for no reason, could be Y as len(X) == len(Y)
-        for i in range(4):  # it won't necessarily add a new one every time
+        for i in range(4):
             # randomly choosing the 4 elements of X and Y for testing
             for_testing = random.choice(options)
             x_test[i] = X[for_testing]
